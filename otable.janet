@@ -73,6 +73,24 @@
 
   entry)
 
+(def otable/proto
+  ```
+  Prototype defining methods used to manipulate the contents of an ordered table.
+  ```
+  @{})
+
+(defn otable?
+  ```
+  Check if x is an ordered table.
+  ```
+  [x]
+  (var [result proto] [false x])
+  (if (table? x)
+    (while (set proto (table/getproto proto))
+      (if (set result (= proto otable/proto))
+        (break))))
+  result)
+
 (defn- otable/put
   ```
   Add the provided key and value to the table. By default, if the key already
@@ -162,33 +180,81 @@
            kv (entry :kv)]
     (kv 1) dflt))
 
-(defn- otable/pairs
+(defn- otable/each-entry
   ```
-  Return an array of [k v] tuples representing the contents of the ordered table.
+  Evaluate body for each entry within the ordered table. Returns nil.
   ```
-  [tbl]
-  (if-let [entries (tbl :entries)]
-    (let [result (-> (length entries) array/new)]
-      (var entry (tbl :first))
-      (while entry
-        (array/push result (entry :kv))
-        (set entry (entry :next)))
-      result)
-    @[]))
+  [x tbl body]
+  (with-syms [$tbl entry]
+    ~(do
+       (def ,$tbl ,tbl)
+       (,assert (,otable? ,$tbl) "expected tbl to have prototype otable/proto")
+       (var ,entry (,$tbl :first))
+       (while ,entry
+         (def ,x ,entry)
+         ,;body
+         (set ,entry (,entry :next))))))
+
+(defmacro otable/each
+  ```
+  Evaluate body for each [k v] pair within the ordered table. Returns nil.
+  ```
+  [x tbl & body]
+  (otable/each-entry ~{:kv ,x} tbl body))
+
+(defmacro otable/eachk
+  ```
+  Evaluate body for each key within the ordered table. Returns nil.
+  ```
+  [x tbl & body]
+  (otable/each-entry ~{:kv [,x]} tbl body))
+
+(defmacro otable/eachv
+  ```
+  Evaluate body for each value within the ordered table. Returns nil.
+  ```
+  [x tbl & body]
+  (otable/each-entry ~{:kv [,(gensym) ,x]} tbl body))
 
 (defn- otable/kvs
   ```
-  Return an array of keys and values in the form @[k v k v k v ...].
+  Return an array of the ordered table's keys and values.
   ```
   [tbl]
-  (if-let [entries (tbl :entries)]
-    (let [result (-> (length entries) (* 2) array/new)]
-      (var entry (tbl :first))
-      (while entry
-        (array/concat result (entry :kv))
-        (set entry (entry :next)))
-      result)
-    @[]))
+  (def result @[])
+  (otable/each pair tbl
+    (array/concat result pair))
+  result)
+
+(defn- otable/keys
+  ```
+  Return an array of the ordered table's keys.
+  ```
+  [tbl]
+  (def result @[])
+  (otable/eachk key tbl
+    (array/push result key))
+  result)
+
+(defn- otable/values
+  ```
+  Return an array of the ordered table's keys.
+  ```
+  [tbl]
+  (def result @[])
+  (otable/eachv value tbl
+    (array/push result value))
+  result)
+
+(defn- otable/pairs
+  ```
+  Return an array of the ordered table's keys and values, paired into tuples.
+  ```
+  [tbl]
+  (def result @[])
+  (otable/each pair tbl
+    (array/push result pair))
+  result)
 
 (defn- otable/clear
   ```
@@ -198,28 +264,6 @@
   (put tbl :entries nil)
   (put tbl :first nil)
   (put tbl :last nil))
-
-(def otable/proto
-  ```
-  Prototype defining methods used to manipulate the contents of an ordered table.
-  ```
-  @{:put otable/put
-    :get otable/get
-    :pairs otable/pairs
-    :kvs otable/kvs
-    :clear otable/clear})
-
-(defn otable?
-  ```
-  Check if x is an ordered table.
-  ```
-  [x]
-  (var [result proto] [false x])
-  (if (table? x)
-    (while (set proto (table/getproto proto))
-      (if (set result (= proto otable/proto))
-        (break))))
-  result)
 
 (defn otable
   ```
@@ -233,3 +277,11 @@
     (each [k v] (partition 2 kvs)
       (:put ot k v))
     ot))
+
+(put otable/proto :put otable/put)
+(put otable/proto :get otable/get)
+(put otable/proto :kvs otable/kvs)
+(put otable/proto :keys otable/keys)
+(put otable/proto :values otable/values)
+(put otable/proto :pairs otable/pairs)
+(put otable/proto :clear otable/clear)
