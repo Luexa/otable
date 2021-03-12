@@ -1,0 +1,41 @@
+= otable
+
+Janet module providing tables that preserve insertion order of key/value pairs.
+
+== Installation
+
+[source,sh]
+----
+$ jpm install https://github.com/Luewd/otable
+----
+
+== Usage
+
+[source,clojure]
+----
+# Import the otable module.
+(import otable)
+
+# Create an otable with two items in the specified order.
+(def ot (otable/otable
+          :first "This key is first"
+          :second "This key is second"))
+
+# Confirm that the otable descends from the otable prototype.
+(assert (otable/otable? ot))
+
+# Add a third item to the table, which will be placed after the first two items.
+(:put ot :third "This key is third")
+
+# Modify the second item without changing its location within the table.
+(:put ot :second "This key is still second")
+
+# Print the key/value pairs in which they were inserted.
+(each [k v] (:pairs ot)
+  (printf "%q %q" k v))
+----
+
+== License
+
+`otable` is made freely available under the terms of the link:LICENSE[BSD 0-Clause License].
+Third-party contributions shall be licensed under the same terms unless explicitly stated otherwise.
