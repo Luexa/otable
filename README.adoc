@@ -14,15 +14,15 @@ $ jpm install https://github.com/Luewd/otable
 [source,clojure]
 ----
 # Import the otable module.
-(import otable)
+(use otable)
 
 # Create an otable with two items in the specified order.
-(def ot (otable/otable
+(def ot (otable
           :first "This key is first"
           :second "This key is second"))
 
 # Confirm that the otable descends from the otable prototype.
-(assert (otable/otable? ot))
+(assert (otable? ot))
 
 # Add a third item to the table, which will be placed after the first two items.
 (:put ot :third "This key is third")
