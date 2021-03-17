@@ -184,14 +184,18 @@
   ```
   Evaluate body for each entry within the ordered table. Returns nil.
   ```
-  [x tbl body]
+  [x tbl body item]
   (with-syms [$tbl entry]
     ~(do
        (def ,$tbl ,tbl)
        (,assert (,otable? ,$tbl) "expected tbl to have OTable prototype")
        (var ,entry (,$tbl :first))
        (while ,entry
-         (def ,x ,entry)
+         (def ,x
+           ,(case item
+              :pair ~(,entry :kv)
+              :key ~((,entry :kv) 0)
+              :value ~((,entry :kv) 1)))
          ,;body
          (set ,entry (,entry :next))))))
 
@@ -200,21 +204,21 @@
   Evaluate body for each [k v] pair within the ordered table. Returns nil.
   ```
   [x tbl & body]
-  (otable/each-entry ~{:kv ,x} tbl body))
+  (otable/each-entry x tbl body :pair))
 
 (defmacro otable/eachk
   ```
   Evaluate body for each key within the ordered table. Returns nil.
   ```
   [x tbl & body]
-  (otable/each-entry ~{:kv [,x]} tbl body))
+  (otable/each-entry x tbl body :key))
 
 (defmacro otable/eachv
   ```
   Evaluate body for each value within the ordered table. Returns nil.
   ```
   [x tbl & body]
-  (otable/each-entry ~{:kv [,(gensym) ,x]} tbl body))
+  (otable/each-entry x tbl body :value))
 
 (defn- otable/kvs
   ```
@@ -222,8 +226,7 @@
   ```
   [tbl]
   (def result @[])
-  (otable/each pair tbl
-    (array/concat result pair))
+  (otable/each pair tbl (array/concat result pair))
   result)
 
 (defn- otable/keys
@@ -232,8 +235,7 @@
   ```
   [tbl]
   (def result @[])
-  (otable/eachk key tbl
-    (array/push result key))
+  (otable/eachk key tbl (array/push result key))
   result)
 
 (defn- otable/values
@@ -242,8 +244,7 @@
   ```
   [tbl]
   (def result @[])
-  (otable/eachv value tbl
-    (array/push result value))
+  (otable/eachv value tbl (array/push result value))
   result)
 
 (defn- otable/pairs
@@ -252,8 +253,7 @@
   ```
   [tbl]
   (def result @[])
-  (otable/each pair tbl
-    (array/push result pair))
+  (otable/each pair tbl (array/push result pair))
   result)
 
 (defn- otable/clear
