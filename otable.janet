@@ -73,11 +73,11 @@
 
   entry)
 
-(def otable/proto
+(def OTable
   ```
   Prototype defining methods used to manipulate the contents of an ordered table.
   ```
-  @{})
+  @{:_name "OTable"})
 
 (defn otable?
   ```
@@ -87,7 +87,7 @@
   (var [result proto] [false x])
   (if (table? x)
     (while (set proto (table/getproto proto))
-      (if (set result (= proto otable/proto))
+      (if (set result (= proto OTable))
         (break))))
   result)
 
@@ -188,7 +188,7 @@
   (with-syms [$tbl entry]
     ~(do
        (def ,$tbl ,tbl)
-       (,assert (,otable? ,$tbl) "expected tbl to have prototype otable/proto")
+       (,assert (,otable? ,$tbl) "expected tbl to have OTable prototype")
        (var ,entry (,$tbl :first))
        (while ,entry
          (def ,x ,entry)
@@ -273,15 +273,15 @@
   [& kvs]
   (if-not (even? (length kvs))
     (error "expected even number of arguments"))
-  (let [ot (table/setproto (table/new 3) otable/proto)]
+  (let [ot (table/setproto (table/new 3) OTable)]
     (each [k v] (partition 2 kvs)
       (:put ot k v))
     ot))
 
-(put otable/proto :put otable/put)
-(put otable/proto :get otable/get)
-(put otable/proto :kvs otable/kvs)
-(put otable/proto :keys otable/keys)
-(put otable/proto :values otable/values)
-(put otable/proto :pairs otable/pairs)
-(put otable/proto :clear otable/clear)
+(put OTable :put otable/put)
+(put OTable :get otable/get)
+(put OTable :kvs otable/kvs)
+(put OTable :keys otable/keys)
+(put OTable :values otable/values)
+(put OTable :pairs otable/pairs)
+(put OTable :clear otable/clear)
