@@ -185,11 +185,11 @@
   Evaluate body for each entry within the ordered table. Returns nil.
   ```
   [x tbl body item]
-  (with-syms [$tbl entry]
+  (with-syms [entry]
     ~(do
-       (def ,$tbl ,tbl)
-       (,assert (,otable? ,$tbl) "expected tbl to have OTable prototype")
-       (var ,entry (,$tbl :first))
+       (var ,entry ,tbl)
+       (,assert (,otable? ,entry) "expected tbl to have OTable prototype")
+       (set ,entry (,entry :first))
        (while ,entry
          (def ,x
            ,(case item
