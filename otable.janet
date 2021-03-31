@@ -195,6 +195,38 @@
     # Otherwise, return the provided default value (nil if not provided).
     (in kv 1) dflt))
 
+(defn- otable/init
+  ```
+  Return the value of key in ds. If the key is not present, a new ordered table
+  will be returned and set as the value of key in ds. If init-fn is provided,
+  its return value will be the default value instead of a new ordered table.
+  ```
+  [tbl key &opt init-fn]
+
+  # Nil or NaN keys cannot be added to a table.
+  (if (or (nil? key) (nan? key)) (break))
+
+  # Retrieve the entry table if it exists.
+  (def entries (in tbl :entries @{}))
+
+  # Return the entry from the table if it exists.
+  (if-let [entry (in entries key)
+           kv (in entry :kv)]
+    (break (in kv 1)))
+
+  # Use init-fn to initialize the new value, or otable constructor as a fallback.
+  (def value
+    (if init-fn (init-fn)
+      (table/setproto (table/new 3) OTable)))
+
+  # Unless init-fn returned nil, add the key/value pair as a new entry.
+  (unless (nil? value)
+    (def entry @{:kv [key value]})
+    (put entries key entry)
+    (entry/put tbl entry :after (in tbl :last))
+    (put tbl :entries entries))
+  value)
+
 (defn- otable/next
   ```
   Obtain the key of the entry following the provided key.
@@ -328,6 +360,60 @@
       # Return the final result of the deep comparison.
       result)))
 
+(defmacro- otable/transform
+  ```
+  Internal macro used by clone, reverse, and reverse!.
+  ```
+  [variant]
+  (def [first next]
+    (if (= variant :clone)
+      [:first :next]
+      [:last :previous]))
+  ~(if (var entry (in tbl ,first))
+     (do ,;(if (= variant :reverse!)
+             ~[] ~[(def tbl (table/clone tbl))])
+       (def entries
+         (->> (in tbl :entries) length table/new (set (tbl :entries))))
+       (def kv (in entry :kv))
+       (var prev-entry @{:kv kv})
+       (put tbl :first prev-entry)
+       (put entries (in kv 0) prev-entry)
+       (set entry (in entry ,next))
+       (while entry
+         (def kv (in entry :kv))
+         (def new-entry @{:kv kv :previous prev-entry})
+         (put entries (in kv 0) new-entry)
+         (put prev-entry :next new-entry)
+         (set entry (in entry ,next))
+         (set prev-entry new-entry))
+       (put tbl :last prev-entry))
+     ,(if (= variant :reverse!)
+        'tbl '(table/clone tbl))))
+
+(defn- otable/clone
+  ```
+  Return a copy of the ordered table that can be mutated without updating the
+  original table.
+  ```
+  [tbl]
+  (otable/transform :clone))
+
+(defn- otable/reverse
+  ```
+  Return a copy of the ordered table that can be mutated without updating the
+  original table, with the order of key/value pairs reversed.
+  ```
+  [tbl]
+  (otable/transform :reverse))
+
+(defn- otable/reverse!
+  ```
+  Reverse the key/value pairs of the ordered table in-place. Returns the modified
+  table.
+  ```
+  [tbl]
+  (otable/transform :reverse!))
+
 (defn- otable/length
   ```
   Return the number of entries within an ordered table.
@@ -349,40 +435,13 @@
       (:put ot k v))
     ot))
 
-(defn- otable/init
-  ```
-  Return the value of key in ds. If the key is not present, a new ordered table
-  will be returned and set as the value of key in ds. If init-fn is provided,
-  its return value will be the default value instead of a new ordered table.
-  ```
-  [tbl key &opt init-fn]
-
-  # Nil or NaN keys cannot be added to a table.
-  (if (or (nil? key) (nan? key)) (break))
-
-  # Retrieve the entry table if it exists.
-  (def entries (in tbl :entries @{}))
-
-  # Return the entry from the table if it exists.
-  (if-let [entry (in entries key)
-           kv (in entry :kv)]
-    (break (in kv 1)))
-
-  # Use init-fn to initialize the new value, or otable constructor as a fallback.
-  (def value (if init-fn (init-fn) (otable)))
-
-  # Unless init-fn returned nil, add the key/value pair as a new entry.
-  (unless (nil? value)
-    (def entry @{:kv [key value]})
-    (put entries key entry)
-    (entry/put tbl entry :after (in tbl :last))
-    (put tbl :entries entries))
-  value)
-
 (put OTable :jvs/get otable/get)
 (put OTable :jvs/put otable/put)
 (put OTable :jvs/init otable/init)
 (put OTable :jvs/next otable/next)
+(put OTable :jvs/clone otable/clone)
+(put OTable :jvs/reverse otable/reverse)
+(put OTable :jvs/reverse! otable/reverse!)
 (put OTable :jvs/length otable/length)
 (put OTable :put otable/put)
 (put OTable :get otable/get)
@@ -394,4 +453,7 @@
 (put OTable :pairs otable/pairs)
 (put OTable :clear otable/clear)
 (put OTable :compare otable/compare)
+(put OTable :clone otable/clone)
+(put OTable :reverse otable/reverse)
+(put OTable :reverse! otable/reverse!)
 (put OTable :length otable/length)
